@@ -20,6 +20,7 @@ export class StringStream {
   pos: number = 0
   /// The start position of the current token.
   start: number = 0
+  lineStart: number = 0
   private lastColumnPos: number = 0
   private lastColumnValue: number = 0
 
@@ -38,7 +39,7 @@ export class StringStream {
   eol(): boolean {return this.pos >= this.string.length}
 
   /// True if we are at the start of the line.
-  sol(): boolean {return this.pos == 0}
+  sol(): boolean {return this.pos == this.lineStart}
 
   /// Get the next code unit after the current position, or undefined
   /// if we're at the end of the line.
@@ -96,12 +97,13 @@ export class StringStream {
       this.lastColumnValue = countCol(this.string, this.start, this.tabSize, this.lastColumnPos, this.lastColumnValue)
       this.lastColumnPos = this.start
     }
-    return this.lastColumnValue
+    return this.lastColumnValue - (this.lineStart ? countCol(this.string, this.lineStart, this.tabSize) : 0)
   }
 
   /// Get the indentation column of the current line.
   indentation() {
-    return this.overrideIndent ?? countCol(this.string, null, this.tabSize)
+    return this.overrideIndent ?? countCol(this.string, null, this.tabSize) -
+      (this.lineStart ? countCol(this.string, this.lineStart, this.tabSize) : 0)
   }
 
   /// Match the input against the given string or regular expression
@@ -131,4 +133,10 @@ export class StringStream {
 
   /// Get the current token.
   current(){return this.string.slice(this.start, this.pos)}
+
+  hideFirstChars(n: number, inner: () => string | null) {
+    this.lineStart += n
+    try { return inner() }
+    finally { this.lineStart -= n }
+  }
 }
